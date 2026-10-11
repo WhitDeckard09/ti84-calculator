@@ -1,12 +1,13 @@
 /* Offline cache so the calculator keeps working with no signal. */
-var CACHE = 'ti84-v1';
+var CACHE = 'ti84-v2';
 var ASSETS = [
   './', './index.html', './manifest.webmanifest', './css/calc.css',
   './js/font.js', './js/lcd.js', './js/state.js', './js/prgm.js', './js/keypad.js', './js/app.js',
-  './js/math/tokens.js', './js/math/parser.js', './js/math/evaluator.js', './js/math/format.js',
+  './js/math/tokens.js', './js/math/parser.js', './js/math/dec.js', './js/math/matrix.js',
+  './js/math/evaluator.js', './js/math/format.js',
   './js/screens/menu.js', './js/screens/home.js', './js/screens/yequals.js',
   './js/screens/fields.js', './js/screens/settings.js', './js/screens/graph.js', './js/screens/table.js',
-  './js/screens/prgmedit.js',
+  './js/screens/prgmedit.js', './js/screens/matedit.js',
   './icons/icon-192.png', './icons/icon-512.png'
 ];
 

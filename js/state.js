@@ -22,7 +22,9 @@
 
     /* memory */
     vars: {},                /* A..Z and θ                    */
-    ans: 0,
+    mats: {},                /* 'A'..'J' -> rows of numbers   */
+    lists: {},               /* 1..6 -> array of numbers      */
+    ans: 0,                  /* a number, a matrix or a list  */
     ys: [],                  /* index 0 => Y1 ... index 9 => Y0 */
 
     win: defaultWindow(),
@@ -45,6 +47,8 @@
       degree: S.angle === 'DEGREE',
       ans: S.ans,
       vars: S.vars,
+      mats: S.mats,
+      lists: S.lists,
       yGet: function (n) {
         var slot = S.ys[(n + 9) % 10];      /* Y1..Y9 -> 0..8, Y0 -> 9 */
         return slot ? slot.toks : null;
@@ -66,7 +70,7 @@
       localStorage.setItem(STORE_KEY, JSON.stringify({
         notation: S.notation, digits: S.digits, angle: S.angle, plotStyle: S.plotStyle,
         coord: S.coord, grid: S.grid, axes: S.axes, label: S.label, expr: S.expr,
-        vars: S.vars, ans: S.ans,
+        vars: S.vars, ans: S.ans, mats: S.mats, lists: S.lists,
         ys: S.ys.map(function (y) { return { toks: serialiseToks(y.toks), on: y.on }; }),
         win: S.win, tbl: { start: S.tbl.start, delta: S.tbl.delta, indpnt: S.tbl.indpnt, depend: S.tbl.depend },
         programs: S.programs
@@ -83,6 +87,8 @@
         if (d[k] !== undefined) S[k] = d[k];
       });
       if (d.vars) S.vars = d.vars;
+      if (d.mats && typeof d.mats === 'object') S.mats = d.mats;
+      if (d.lists && typeof d.lists === 'object') S.lists = d.lists;
       if (d.win) S.win = d.win;
       if (d.tbl) { S.tbl.start = d.tbl.start; S.tbl.delta = d.tbl.delta; S.tbl.indpnt = d.tbl.indpnt; S.tbl.depend = d.tbl.depend; }
       if (Array.isArray(d.programs)) S.programs = d.programs;
@@ -97,7 +103,7 @@
      the real calculator, where Defaults resets settings rather than memory. */
   S.resetDefaults = function () {
     S.win = defaultWindow();
-    S.vars = {}; S.ans = 0;
+    S.vars = {}; S.ans = 0; S.mats = {}; S.lists = {};
     for (var i = 0; i < 10; i++) { S.ys[i].toks = []; S.ys[i].on = true; }
   };
 

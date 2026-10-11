@@ -3,6 +3,8 @@ global.window = {};
 require('../js/font.js');
 require('../js/math/tokens.js');
 require('../js/math/parser.js');
+require('../js/math/dec.js');
+require('../js/math/matrix.js');
 require('../js/math/evaluator.js');
 require('../js/math/format.js');
 require('../js/state.js');
@@ -13,7 +15,7 @@ var T = TI.Tok, P = TI.Prgm, S = TI.State;
 /* stand-in for the home screen */
 var out = [];
 var host = {
-  progDisp: function (t, right) { out.push((right ? '>' : '') + t); },
+  progDisp: function (t, right) { out.push(typeof t === 'string' ? (right ? '>' : '') + t : t); },
   progClear: function () { out.length = 0; },
   progOutput: function (r, c, t) { out.push('@' + r + ',' + c + ':' + t); },
   progDone: function () { out.push('Done'); },
@@ -61,6 +63,43 @@ function check(name, got, want) {
   if (g === w) pass++; else fails.push('  ' + name + '\n      want ' + w + '\n      got  ' + g);
 }
 function runOut(name) { out = []; S.vars = {}; P.run(name); return out; }
+
+/* --- matrices and lists in programs -------------------------------------- */
+function mline(src) {
+  if (P.CMDS[src]) return [P.cmdTok(src)];
+  var m = /^([A-Za-z]+)\|(.*)$/.exec(src);
+  if (m && P.CMDS[m[1]]) return [P.cmdTok(m[1])].concat(TI.Tok.lex(m[2]));
+  return TI.Tok.lex(src);
+}
+function mprog(name, lines) {
+  P.remove(name);
+  var p = P.create(name);
+  p.lines = lines.map(mline);
+  return p;
+}
+function runM(name) { out = []; S.vars = {}; S.mats = {}; S.lists = {}; P.run(name); return out; }
+
+mprog('MATA', ['[[1,2][3,4]]→[A]', 'Disp|[A]', 'Disp|[A](2,1)', '[A]²']);
+var mo = runM('MATA');
+check('Disp matrix hands the host its lines', mo[0].lines, ['[[1 2]', ' [3 4]]']);
+check('Disp matrix is right aligned', mo.length, 4);
+check('Disp element', mo[1], '>3');
+check('bare matrix expression shows its answer', mo[2].lines, ['[[7  10]', ' [15 22]]']);
+
+mprog('MATB', ['{1,2,3}→L1', 'Disp|L1*2', 'Disp|dim(L1)']);
+var lo = runM('MATB');
+check('Disp list', lo[0].lines, ['{2 4 6}']);
+check('Disp dim of a list', lo[1], '>3');
+
+mprog('MATC', ['[[1,2][3,4]]→[A]', 'For|I,1,2', 'Disp|[A](I,I)', 'End']);
+var co = runM('MATC');
+check('matrix element inside a loop', co, ['>1', '>4', 'Done']);
+
+mprog('MATD', ['[[1,2][3,4]]→X']);
+check('storing a matrix in a real variable is DATA TYPE', runM('MATD').slice(-1)[0], 'ERR:DATA TYPE@0');
+
+mprog('MATE', ['Disp|[B]']);
+check('undefined matrix', runM('MATE').slice(-1)[0], 'ERR:UNDEFINED@0');
 
 /* --- names ------------------------------------------------------------- */
 check('valid name', P.validName('NOTES'), true);

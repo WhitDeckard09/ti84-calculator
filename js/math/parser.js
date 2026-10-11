@@ -48,13 +48,17 @@
   function Parser(toks) {
     this.k = toks;
     this.i = 0;
-    /* Unbalanced parens are closed for you at ENTER, same as the real thing. */
-    var depth = 0;
+    /* Unclosed delimiters are closed for you at ENTER, same as the real thing.
+       The stack remembers which closer each opener needs: ) ] or }. */
+    var open = [];
     for (var j = 0; j < toks.length; j++) {
-      if (toks[j].t === 'lp' || toks[j].t === 'fn') depth++;
-      else if (toks[j].t === 'rp') depth--;
+      var t = toks[j].t;
+      if (t === 'lp' || t === 'fn') open.push('rp');
+      else if (t === 'lb') open.push('rb');
+      else if (t === 'lbr') open.push('rbr');
+      else if (t === 'rp' || t === 'rb' || t === 'rbr') open.pop();
     }
-    this.autoClose = Math.max(0, depth);
+    this.autoStack = open;       /* innermost closer is last */
   }
 
   /* Spaces are decoration; the calculator ignores them inside an expression. */
@@ -64,12 +68,16 @@
   Parser.prototype.peek = function () {
     this.skipSpace();
     if (this.i < this.k.length) return this.k[this.i];
-    return this.autoClose > 0 ? { t: 'rp', s: ')', auto: true } : null;
+    return this.autoStack.length ? this.autoTok() : null;
+  };
+  Parser.prototype.autoTok = function () {
+    var c = this.autoStack[this.autoStack.length - 1];
+    return { t: c, s: c === 'rp' ? ')' : c === 'rb' ? ']' : '}', auto: true };
   };
   Parser.prototype.next = function () {
     this.skipSpace();
     if (this.i < this.k.length) return this.k[this.i++];
-    if (this.autoClose > 0) { this.autoClose--; return { t: 'rp', s: ')', auto: true }; }
+    if (this.autoStack.length) { var a = this.autoTok(); this.autoStack.pop(); return a; }
     return null;
   };
   Parser.prototype.atEnd = function () { return this.peek() === null; };
@@ -113,6 +121,37 @@
     return args;
   };
 
+  /* a comma separated run of expressions up to the closer */
+  Parser.prototype.itemList = function (closer) {
+    var items = [];
+    var t = this.peek();
+    if (t && t.t === closer) { this.next(); return items; }
+    for (;;) {
+      items.push(this.expr(0));
+      t = this.peek();
+      if (t && t.t === 'comma') { this.next(); continue; }
+      if (t && t.t === closer) { this.next(); break; }
+      throw err('SYNTAX', this.i);
+    }
+    return items;
+  };
+
+  /* [[1,2][3,4]], with the opening [ already consumed */
+  Parser.prototype.matrixLiteral = function (pos) {
+    var rows = [];
+    for (;;) {
+      var t = this.next();
+      if (!t || t.t !== 'lb') throw err('SYNTAX', this.i - 1);
+      var row = this.itemList('rb');
+      if (!row.length) throw err('SYNTAX', this.i - 1);
+      rows.push(row);
+      var nx = this.peek();
+      if (nx && nx.t === 'rb') { this.next(); break; }
+      if (!nx || nx.t !== 'lb') throw err('SYNTAX', this.i);
+    }
+    return { k: 'matlit', rows: rows, pos: pos };
+  };
+
   Parser.prototype.prefix = function () {
     var t = this.next();
     if (!t) throw err('SYNTAX', this.i);
@@ -132,6 +171,24 @@
       }
       case 'fn':
         return { k: 'call', f: t.f, args: this.argList(pos), pos: pos };
+      case 'lb':    return this.matrixLiteral(pos);
+      case 'lbr':   return { k: 'listlit', items: this.itemList('rbr'), pos: pos };
+      case 'mat': {
+        var nx = this.peek();
+        if (nx && nx.t === 'lp') {
+          this.next();
+          return { k: 'matel', n: t.n, args: this.argList(pos), pos: pos };
+        }
+        return { k: 'mat', n: t.n, pos: pos };
+      }
+      case 'lst': {
+        var nl = this.peek();
+        if (nl && nl.t === 'lp') {
+          this.next();
+          return { k: 'lstel', n: t.n, args: this.argList(pos), pos: pos };
+        }
+        return { k: 'lst', n: t.n, pos: pos };
+      }
       case 'var':   return { k: 'var', n: t.n, pos: pos };
       case 'yvar':  return { k: 'yvar', n: t.n, pos: pos };
       case 'ans':   return { k: 'ans' };
@@ -198,15 +255,25 @@
     return left;
   };
 
-  /* A whole entry: expression, optionally followed by →VAR. */
+  /* A whole entry: expression, optionally followed by →target. The target is
+     a variable, [A], [A](r,c), L1, L1(n), or dim([A]) / dim(L1). */
   Parser.prototype.statement = function () {
     var e = this.expr(0);
     var t = this.peek();
-    if (t && t.t === 'store') {
+    while (t && t.t === 'store') {
       this.next();
-      var target = this.next();
-      if (!target || (target.t !== 'var' && target.t !== 'yvar')) throw err('SYNTAX', this.i - 1);
+      var at = this.i;
+      var target;
+      var first = this.peek();
+      if (!first) throw err('SYNTAX', at);
+      var okTok = first.t === 'var' || first.t === 'yvar' || first.t === 'mat' ||
+                  first.t === 'lst' || (first.t === 'fn' && first.f === 'dim');
+      if (!okTok) throw err('SYNTAX', at);
+      target = this.prefix();
+      if (target.k === 'call' && !(target.args.length === 1 &&
+          (target.args[0].k === 'mat' || target.args[0].k === 'lst'))) throw err('SYNTAX', at);
       e = { k: 'store', a: e, target: target };
+      t = this.peek();
     }
     return e;
   };

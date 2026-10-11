@@ -250,6 +250,51 @@
     press('n2 n1 enter');
     check('prompt answered', TI.State.home.rows.slice(-2).map(function (r) { return r.s; }), ['42', 'Done']);
 
+    /* --- matrices -------------------------------------------------------- */
+    reset();
+    press('second mul second mul n1 comma n2 second sub second mul n3 comma n4 second sub second sub');
+    check('matrix literal on the entry line', TI.Screens.home.editor().text(), '[[1,2][3,4]]');
+    press('enter');
+    check('matrix answer is two lines, right aligned',
+          dumpLarge().slice(1, 3), ['         [[1 2]', '          [3 4]]']);
+    press('sto second inv enter');            /* Ans→[A] from the NAMES tab */
+    press('enter');
+    check('[[1,2][3,4]]→[A] stores it', TI.State.mats.A, [[1, 2], [3, 4]]);
+
+    press('second inv enter');                /* paste [A] */
+    check('NAMES pastes [A]', TI.Screens.home.editor().text(), '[A]');
+    press('inv enter');                       /* [A]⁻¹ */
+    check('inverse keeps the real calculator\'s rounding', TI.State.ans,
+          [[-1.9999999999998, 0.99999999999994], [1.4999999999999, -0.49999999999997]]);
+
+    reset();
+    press('second inv right enter');          /* MATH 1:det( */
+    press('second mul second mul n5 second sub second sub rp enter');
+    check('det([[5]])', TI.State.ans, 5);
+
+    reset();
+    press('second mul second mul n1 comma n2 second sub second sub plus'.replace('plus', 'add')
+          + ' n3 enter');
+    check('matrix plus a number is DATA TYPE',
+          dumpLarge().slice(0, 1), ['ERR:DATA TYPE']);
+
+    /* --- the matrix editor ------------------------------------------------ */
+    reset();
+    press('second inv right right enter');    /* EDIT, [A] */
+    check('editor opens on a fresh 1x1', TI.State.mats.A, [[0]]);
+    press('n2 enter n2 enter');               /* 2 rows, 2 columns */
+    press('n1 enter n2 enter n3 enter n4 enter');
+    check('ENTER walks across then down', TI.State.mats.A, [[1, 2], [3, 4]]);
+    press('second mode');                     /* QUIT */
+    check('QUIT returns home', TI.App.screen, 'home');
+
+    /* --- lists ------------------------------------------------------------- */
+    reset();
+    press('second lp n1 comma n2 comma n3 second rp sto second n1 enter');
+    check('{1,2,3}→L1', TI.State.lists[1], [1, 2, 3]);
+    press('second n1 mul n2 enter');
+    check('L1*2', TI.State.ans, [2, 4, 6]);
+
     /* --- 2nd / ALPHA latching --------------------------------------------- */
     reset();
     press('second');

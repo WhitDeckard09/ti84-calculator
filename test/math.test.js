@@ -3,6 +3,8 @@ global.window = {};
 require('../js/font.js');
 require('../js/math/tokens.js');
 require('../js/math/parser.js');
+require('../js/math/dec.js');
+require('../js/math/matrix.js');
 require('../js/math/evaluator.js');
 require('../js/math/format.js');
 var TI = global.window.TI;

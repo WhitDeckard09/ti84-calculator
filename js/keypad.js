@@ -44,7 +44,7 @@
       { id: 'clear', cls: 'k-fn', label: 'CLEAR', main: act('clear') }
     ],
     [
-      { id: 'inv', cls: 'k-fn', label: 'x⁻¹', main: tok(function () { return T.post('inv', '⁻¹'); }), s2: 'MATRIX', s: act('na'), a2: 'D', a: letter('D') },
+      { id: 'inv', cls: 'k-fn', label: 'x⁻¹', main: tok(function () { return T.post('inv', '⁻¹'); }), s2: 'MATRIX', s: act('matrix'), a2: 'D', a: letter('D') },
       { id: 'sin', cls: 'k-fn', label: 'SIN', main: tok(function () { return T.fn('sin'); }), s2: 'SIN⁻¹', s: tok(function () { return T.fn('asin', 'sin⁻¹('); }), a2: 'E', a: letter('E') },
       { id: 'cos', cls: 'k-fn', label: 'COS', main: tok(function () { return T.fn('cos'); }), s2: 'COS⁻¹', s: tok(function () { return T.fn('acos', 'cos⁻¹('); }), a2: 'F', a: letter('F') },
       { id: 'tan', cls: 'k-fn', label: 'TAN', main: tok(function () { return T.fn('tan'); }), s2: 'TAN⁻¹', s: tok(function () { return T.fn('atan', 'tan⁻¹('); }), a2: 'G', a: letter('G') },
@@ -53,8 +53,8 @@
     [
       { id: 'sq',    cls: 'k-fn', label: 'x²', main: tok(function () { return T.post('sq', '²'); }), s2: '√', s: tok(function () { return T.fn('sqrt', '√('); }), a2: 'I', a: letter('I') },
       { id: 'comma', cls: 'k-fn', label: ',', main: tok(function () { return T.comma(); }), s2: 'EE', s: tok(function () { return T.ee(); }), a2: 'J', a: letter('J') },
-      { id: 'lp',    cls: 'k-fn', label: '(', main: tok(function () { return T.lp(); }), s2: '{', s: act('na'), a2: 'K', a: letter('K') },
-      { id: 'rp',    cls: 'k-fn', label: ')', main: tok(function () { return T.rp(); }), s2: '}', s: act('na'), a2: 'L', a: letter('L') },
+      { id: 'lp',    cls: 'k-fn', label: '(', main: tok(function () { return T.lp(); }), s2: '{', s: tok(function () { return T.lbr(); }), a2: 'K', a: letter('K') },
+      { id: 'rp',    cls: 'k-fn', label: ')', main: tok(function () { return T.rp(); }), s2: '}', s: tok(function () { return T.rbr(); }), a2: 'L', a: letter('L') },
       { id: 'div',   cls: 'k-op', label: '÷', main: tok(function () { return T.op('/'); }), s2: 'e', s: tok(function () { return T.konst('e', 'e'); }), a2: 'M', a: letter('M') }
     ],
     [
@@ -62,20 +62,20 @@
       { id: 'n7',  cls: 'k-num', label: '7', main: digit('7'), s2: 'u', s: act('na'), a2: 'O', a: letter('O') },
       { id: 'n8',  cls: 'k-num', label: '8', main: digit('8'), s2: 'v', s: act('na'), a2: 'P', a: letter('P') },
       { id: 'n9',  cls: 'k-num', label: '9', main: digit('9'), s2: 'w', s: act('na'), a2: 'Q', a: letter('Q') },
-      { id: 'mul', cls: 'k-op',  label: '×', main: tok(function () { return T.op('*'); }), s2: '[', s: act('na'), a2: 'R', a: letter('R') }
+      { id: 'mul', cls: 'k-op',  label: '×', main: tok(function () { return T.op('*'); }), s2: '[', s: tok(function () { return T.lb(); }), a2: 'R', a: letter('R') }
     ],
     [
       { id: 'ln',  cls: 'k-fn',  label: 'LN', main: tok(function () { return T.fn('ln'); }), s2: 'eˣ', s: tok(function () { return T.fn('exp', 'e^('); }), a2: 'S', a: letter('S') },
-      { id: 'n4',  cls: 'k-num', label: '4', main: digit('4'), s2: 'L₄', s: act('na'), a2: 'T', a: letter('T') },
-      { id: 'n5',  cls: 'k-num', label: '5', main: digit('5'), s2: 'L₅', s: act('na'), a2: 'U', a: letter('U') },
-      { id: 'n6',  cls: 'k-num', label: '6', main: digit('6'), s2: 'L₆', s: act('na'), a2: 'V', a: letter('V') },
-      { id: 'sub', cls: 'k-op',  label: '−', main: tok(function () { return T.op('-'); }), s2: ']', s: act('na'), a2: 'W', a: letter('W') }
+      { id: 'n4',  cls: 'k-num', label: '4', main: digit('4'), s2: 'L₄', s: tok(function () { return T.lst(4); }), a2: 'T', a: letter('T') },
+      { id: 'n5',  cls: 'k-num', label: '5', main: digit('5'), s2: 'L₅', s: tok(function () { return T.lst(5); }), a2: 'U', a: letter('U') },
+      { id: 'n6',  cls: 'k-num', label: '6', main: digit('6'), s2: 'L₆', s: tok(function () { return T.lst(6); }), a2: 'V', a: letter('V') },
+      { id: 'sub', cls: 'k-op',  label: '−', main: tok(function () { return T.op('-'); }), s2: ']', s: tok(function () { return T.rb(); }), a2: 'W', a: letter('W') }
     ],
     [
       { id: 'sto', cls: 'k-fn',  label: 'STO▸', main: act('sto'), s2: 'RCL', s: act('na'), a2: 'X', a: letter('X') },
-      { id: 'n1',  cls: 'k-num', label: '1', main: digit('1'), s2: 'L₁', s: act('na'), a2: 'Y', a: letter('Y') },
-      { id: 'n2',  cls: 'k-num', label: '2', main: digit('2'), s2: 'L₂', s: act('na'), a2: 'Z', a: letter('Z') },
-      { id: 'n3',  cls: 'k-num', label: '3', main: digit('3'), s2: 'L₃', s: act('na'), a2: 'θ', a: letter('θ') },
+      { id: 'n1',  cls: 'k-num', label: '1', main: digit('1'), s2: 'L₁', s: tok(function () { return T.lst(1); }), a2: 'Y', a: letter('Y') },
+      { id: 'n2',  cls: 'k-num', label: '2', main: digit('2'), s2: 'L₂', s: tok(function () { return T.lst(2); }), a2: 'Z', a: letter('Z') },
+      { id: 'n3',  cls: 'k-num', label: '3', main: digit('3'), s2: 'L₃', s: tok(function () { return T.lst(3); }), a2: 'θ', a: letter('θ') },
       { id: 'add', cls: 'k-op',  label: '+', main: tok(function () { return T.op('+'); }), s2: 'MEM', s: act('mem'), a2: '"', a: tok(function () { return T.quote(); }) }
     ],
     [

@@ -116,6 +116,7 @@
     if (!toks.length) return;
     try {
       var r = TI.Eval.evaluate(TI.Parser.parse(toks), S.evalCtx());
+      if (typeof r.value !== 'number') { TI.Menu.error('DATA TYPE'); return; }
       S.tbl.ask[selRow] = r.value;
       S.save();
     } catch (e) { TI.Menu.error(e.ti || 'SYNTAX'); }

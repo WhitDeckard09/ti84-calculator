@@ -134,13 +134,21 @@
     return out;
   }
 
-  function evalToks(toks, lineNo) {
+  /* any value: a number, a matrix or a list */
+  function evalAny(toks, lineNo) {
     if (!toks || !toks.length) throw err('SYNTAX', lineNo);
     try {
       return TI.Eval.evaluate(TI.Parser.parse(toks), S.evalCtx()).value;
     } catch (e) {
       throw err(e.ti || 'SYNTAX', lineNo);
     }
+  }
+
+  /* a number: loop bounds, conditions and screen positions can't be matrices */
+  function evalToks(toks, lineNo) {
+    var v = evalAny(toks, lineNo);
+    if (typeof v !== 'number') throw err('DATA TYPE', lineNo);
+    return v;
   }
 
   function labelOf(line, at) {
@@ -233,7 +241,7 @@
       try { res = TI.Eval.evaluate(ast, S.evalCtx()); }
       catch (e) { throw err(e.ti || 'SYNTAX', f.pc); }
       if (ast.k !== 'store') {
-        host.progDisp(res.frac ? TI.Fmt.frac(res.value, S.mode()) : TI.Fmt.num(res.value, S.mode()), true);
+        host.progDisp(TI.Fmt.show(res.value, S.mode(), res.frac), true);
       }
       f.pc++;
       return;
@@ -250,7 +258,7 @@
         if (!parts.length) { f.pc++; return; }
         parts.forEach(function (p) {
           if (isString(p)) host.progDisp(stringValue(p), false);
-          else host.progDisp(TI.Fmt.num(evalToks(p, f.pc), S.mode()), true);
+          else host.progDisp(TI.Fmt.show(evalAny(p, f.pc), S.mode()), true);
         });
         f.pc++;
         return;
@@ -271,7 +279,7 @@
       case 'Pause': {
         if (rest.length && !isBlank(rest)) {
           if (isString(rest)) host.progDisp(stringValue(rest), false);
-          else host.progDisp(TI.Fmt.num(evalToks(rest, f.pc), S.mode()), true);
+          else host.progDisp(TI.Fmt.show(evalAny(rest, f.pc), S.mode()), true);
         }
         f.pc++;
         vm.waiting = { type: 'pause' };

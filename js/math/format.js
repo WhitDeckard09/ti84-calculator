@@ -98,5 +98,41 @@
     return signed(String(f.n)) + '/' + String(f.d);
   }
 
-  TI.Fmt = { num: num, frac: frac, sigRound: sigRound, NEG: NEG, EE: EE };
+  /* --- matrices and lists -------------------------------------------------
+   * [[1 2 3]        entries are left aligned in columns one space apart, the
+   *  [4 5 6]]       block is right aligned on the screen.
+   * {1 2 3}         lists are one line.
+   * Returns the lines; the caller decides how to fit them on 16 columns.
+   */
+  function matrixLines(M, mode) {
+    var cells = M.map(function (r) { return r.map(function (x) { return num(x, mode); }); });
+    var widths = [];
+    cells.forEach(function (r) {
+      r.forEach(function (c, j) { widths[j] = Math.max(widths[j] || 0, Array.from(c).length); });
+    });
+    return cells.map(function (r, i) {
+      var body = r.map(function (c, j) {
+        var pad = widths[j] - Array.from(c).length;
+        return c + new Array(pad + 1).join(' ');
+      }).join(' ');
+      var s = (i === 0 ? '[' : ' ') + '[' + body + ']';
+      if (i === cells.length - 1) s += ']';
+      return s;
+    });
+  }
+
+  function listLine(L, mode) {
+    return '{' + L.map(function (x) { return num(x, mode); }).join(' ') + '}';
+  }
+
+  /* A number as text; a matrix or list as { lines: [...] }. */
+  function show(v, mode, asFrac) {
+    if (Array.isArray(v)) {
+      if (v.length && Array.isArray(v[0])) return { lines: matrixLines(v, mode) };
+      return { lines: [listLine(v, mode)] };
+    }
+    return asFrac ? frac(v, mode) : num(v, mode);
+  }
+
+  TI.Fmt = { num: num, frac: frac, show: show, sigRound: sigRound, NEG: NEG, EE: EE };
 })(window.TI = window.TI || {});

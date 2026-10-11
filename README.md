@@ -80,6 +80,10 @@ exactly on `X=0` at the middle column — the same numbers the hardware gives.
 | `MATH` | MATH (▸Frac, ▸Dec, ³, ³√, ˣ√, fMin, fMax, nDeriv, fnInt), NUM (abs, round, iPart, fPart, int, min, max, lcm, gcd), PRB (rand, nPr, nCr, !, randInt). |
 | `2nd MATH` → TEST | Relational operators and `and` / `or` / `xor` / `not`. |
 | `VARS` | Inserts a Y-variable reference, so `Y1` can appear inside another expression. |
+| `2nd x⁻¹` → MATRIX | NAMES pastes `[A]`…`[J]` with their sizes, MATH holds `det(`, `ᵀ`, `dim(`, `Fill(`, `identity(`, `randM(`, `augment(`, `Matr▸list(`, `List▸matr(`, `cumSum(`, `ref(`, `rref(` and the four row operations, EDIT opens the matrix editor. |
+| `2nd ×` `2nd −` | `[` and `]`, for matrix literals such as `[[1,2][3,4]]`. |
+| `2nd (` `2nd )` | `{` and `}`, for list literals such as `{1,2,3}`. |
+| `2nd 1` … `2nd 6` | The lists `L₁` to `L₆`. |
 | `2nd +` → MEM | About, delete a program, reset to defaults, or clear all RAM. |
 
 Everything is saved as you go, so closing the app keeps your functions, window
@@ -198,6 +202,74 @@ falls back to the decimal when the denominator runs past four digits — so
 
 ---
 
+## Matrices and lists
+
+Ten matrices, `[A]` to `[J]`, up to 99×99, and six lists, `L₁` to `L₆`. Type a
+literal (`[[1,2][3,4]]`, `{1,2,3}`), store it with `→`, and use it in any
+expression:
+
+```
+[[1,2][3,4]]→[A]           stores it
+[A]²                       [[7  10]
+                            [15 22]]
+det([A])                   ⁻2
+[A](2,1)                   3
+9→[A](1,2)                 sets one entry
+{3,3}→dim([A])             resizes, keeping what fits
+{1,2,3}*2                  {2 4 6}
+```
+
+| | |
+|---|---|
+| `+` `−` | matrix with matrix, same size (`ERR:DIM MISMATCH` otherwise); a number never mixes in (`ERR:DATA TYPE`) |
+| `*` | matrix × matrix, number × matrix, matrix × number |
+| `^` | `[A]^n` for whole `n ≥ 0`, and `[A]⁻¹`; `x²`, `x³` and `ᵀ` work too |
+| `=` `≠` | compare whole matrices; `<` and the rest are `ERR:DATA TYPE` |
+| `abs(` `round(` `iPart(` `fPart(` `int(` | act on every entry |
+| lists | every operator and function works entry by entry, with a number broadcast across |
+
+The matrix editor is the real one: type the dimensions first (UP from the top
+row reaches them), then entries, which are expressions, so `2π` is fine. ENTER
+walks across a row and then down.
+
+A wide matrix is cut off at the screen edge with `…`, and the arrow keys scroll
+it sideways, as on the calculator.
+
+### Matching the real numbers
+
+A TI-84 does not compute in binary doubles. Every real is 14 significant
+decimal digits, and matrix algebra shows it: `det([[1,2],[3,4]])` is
+`⁻2.0000000000001` inside the calculator, and `[[1,2][3,4]]⁻¹` holds
+`⁻1.9999999999998`. A version built on binary doubles gets different digits in
+the 13th place, and can disagree with the calculator about whether a nearly
+singular matrix is singular at all.
+
+So the matrix code runs on its own decimal type (`js/math/dec.js`) and each
+algorithm follows the order of operations the real OS uses:
+
+- every `+ − × ÷` is the exact result rounded to 14 digits, half up;
+- an addition aligns the smaller operand with two guard digits and **drops**
+  the rest, so `⁻8472344763845000+1150.5` is `⁻8472344763843900`;
+- an addition that cancels 13 or more leading digits is exactly `0`;
+- `[A]*[B]` sums each entry from the last term to the first;
+- `det(` is Crout LU with partial pivoting, dot products summed first and
+  subtracted once, pivots multiplied last to first;
+- `[A]⁻¹` is `U⁻¹·L⁻¹` on that same factorisation;
+- a pivot under `3ᴇ⁻13 · n ·` (largest row sum) counts as zero, which is what
+  makes `[[1,2][3,6.00000000001]]⁻¹` an `ERR:SINGULAR MAT` and
+  `[[1,2][3,6.0000000001]]⁻¹` not.
+
+Those rules were not guessed. They were recovered by running the real OS in an
+emulator and comparing results at full 14-digit precision, and `test/` holds
+the real calculator's answers: 700-odd matrix and list results that this engine
+reproduces digit for digit, apart from a few `rref(` and `ref(` inputs that are
+rank deficient and span ten orders of magnitude (last digit only).
+
+Scalar arithmetic outside matrices and lists is still ordinary double
+arithmetic rounded to ten digits for display.
+
+---
+
 ## Phone-specific additions
 
 Three things the hardware has no way to do, added because a touchscreen does:
@@ -217,9 +289,10 @@ Key presses fire on touch-down with a short haptic tick, like a membrane switch.
 These parts of the real OS are not here, and their keys do nothing when
 pressed:
 
-`STAT` and stat lists (so `ZoomStat` reports `ERR:STAT`), `2nd TRACE` (CALC),
-`2nd Y=` (STAT PLOT), `MATRIX`, `LIST`, `DISTR`, `DRAW`, `LINK`, `CATALOG`,
-complex numbers (`a+bi`), and the PAR / POL / SEQ graphing modes. MODE displays
+`STAT` and its list editor (so `ZoomStat` reports `ERR:STAT`), the `LIST` menu
+(lists themselves work from `L₁` to `L₆` and `{ }`), `2nd TRACE` (CALC),
+`2nd Y=` (STAT PLOT), `DISTR`, `DRAW`, `LINK`, `CATALOG`, complex numbers
+(`a+bi`), and the PAR / POL / SEQ graphing modes. MODE displays
 those rows so the screen reads correctly, but only the supported options can be
 selected.
 
@@ -247,10 +320,12 @@ js/keypad.js          the key matrix: layout, legends, three bindings per key
 js/app.js             boot, key routing, gestures, render loop
 js/math/tokens.js     token model (a "sin(" is one token, and DEL removes it whole)
 js/math/parser.js     precedence-climbing parser
-js/math/evaluator.js  evaluation, honouring MODE
+js/math/dec.js        14-digit decimal arithmetic, as the real machine does it
+js/math/matrix.js     determinant, inverse, rref and the rest, in TI's order of operations
+js/math/evaluator.js  evaluation, honouring MODE; numbers, matrices and lists
 js/math/format.js     TI number display rules
 js/screens/*.js       home, yequals, fields (WINDOW/TBLSET), settings (MODE/FORMAT),
-                      graph, table, prgmedit, menu
+                      graph, table, prgmedit, matedit, menu
 sw.js                 offline cache (network first, so updates land)
 serve.py              no-cache dev server
 ```
@@ -261,13 +336,21 @@ serve.py              no-cache dev server
 
 ```bash
 node test/math.test.js    # 114 checks
-node test/prgm.test.js    # 42 checks
+node test/prgm.test.js    # 51 checks
+node test/matrix.test.js  # 746 recorded answers from a real TI-84 Plus
 ```
 
 The first covers the parser, evaluator and formatter — each check is an entry a
 real TI-84 Plus answers a specific way. The second covers program storage and
 every interpreter command, including loops, branches, and suspend/resume for
-`Pause`, `Input` and `Prompt`.
+`Pause`, `Input` and `Prompt`, and `Disp` of matrices and lists.
+
+The third replays `test/matrix.fixtures.json`: matrix and list inputs, with
+what a real TI-84 Plus (OS 2.55MP) answered, read back at full 14-digit
+precision. 743 match digit for digit; 3 rank-deficient `rref(` / `ref(` inputs
+differ in the last digit and are reported separately.
+`test/gen-matrix-fixtures.py` regenerates the file, given an emulator and a ROM
+image, which are not part of this repository.
 
 For the UI, serve the folder, open the app, and run this in the console:
 
@@ -275,7 +358,7 @@ For the UI, serve the folder, open the app, and run this in the console:
 fetch('/test/ui.js').then(r => r.text()).then(s => (0, eval)(s)).then(() => TIUI.run())
 ```
 
-48 checks that press real keys and read the resulting framebuffer back — home
+60 checks that press real keys and read the resulting framebuffer back — home
 arithmetic, Y= editing, WINDOW, every ZOOM preset, TRACE stepping, the table,
-writing and reopening a note, running a program, error dialogs, and 2nd/ALPHA
-latching.
+writing and reopening a note, running a program, error dialogs, 2nd/ALPHA
+latching, and typing, storing, inverting and editing matrices.

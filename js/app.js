@@ -86,6 +86,36 @@
     });
   }
 
+  /* 2nd MATRIX: NAMES pastes [A], MATH pastes a function, EDIT opens the editor. */
+  var MATRIX_NAMES = 'ABCDEFGHIJ'.split('');
+  function matLabel(n) {
+    var m = S.mats[n];
+    return '[' + n + ']' + (m ? ' ' + TI.Mat.rows(m) + '×' + TI.Mat.cols(m) : '');
+  }
+  function openMatrix() {
+    var fns = [
+      ['det(', 'det'], ['ᵀ', null], ['dim(', 'dim'], ['Fill(', 'fill'], ['identity(', 'identity'],
+      ['randM(', 'randM'], ['augment(', 'augment'], ['Matr▸list(', 'matrToList'],
+      ['List▸matr(', 'listToMatr'], ['cumSum(', 'cumSum'], ['ref(', 'ref'], ['rref(', 'rref'],
+      ['rowSwap(', 'rowSwap'], ['row+(', 'rowPlus'], ['*row(', 'mulRow'], ['*row+(', 'mulRowPlus']
+    ];
+    TI.Menu.open({
+      tabs: ['NAMES', 'MATH', 'EDIT'],
+      items: [
+        MATRIX_NAMES.map(function (n) {
+          return insertItem(matLabel(n), function () { return T.mat(n); });
+        }),
+        fns.map(function (f) {
+          if (f[1] === null) return insertItem(f[0], function () { return T.post('transp', 'ᵀ'); });
+          return insertItem(f[0], function () { return T.fn(f[1], f[0]); });
+        }),
+        MATRIX_NAMES.map(function (n) {
+          return { label: matLabel(n), run: function () { App.setScreen('matedit', { name: n }); } };
+        })
+      ]
+    });
+  }
+
   function openTest() {
     TI.Menu.open({
       tabs: ['TEST', 'LOGIC'],
@@ -221,6 +251,7 @@
     mode:   function () { App.setScreen('mode'); },
     quit:   function () { App.setScreen('home'); },
     math:   openMath,
+    matrix: openMatrix,
     test:   openTest,
     prgm:   function () { App.screen === 'prgmedit' ? openPrgmCtl() : openPrgm(); },
     apps:   openApps,
@@ -426,9 +457,20 @@
     'ArrowUp':'up', 'ArrowDown':'down', 'ArrowLeft':'left', 'ArrowRight':'right',
     'x':'xtn', 'X':'xtn'
   };
+  /* matrix brackets and list braces sit behind 2nd on the keypad, so the
+     keyboard types them straight in */
+  var BRACKETS = {
+    '[': function () { return T.lb(); }, ']': function () { return T.rb(); },
+    '{': function () { return T.lbr(); }, '}': function () { return T.rbr(); }
+  };
   function bindKeyboard() {
     window.addEventListener('keydown', function (e) {
       if (e.metaKey || e.ctrlKey) return;
+      if (BRACKETS[e.key]) {
+        e.preventDefault();
+        App.insertToken(BRACKETS[e.key]());
+        return;
+      }
       var id = KEYMAP[e.key];
       if (!id) return;
       e.preventDefault();

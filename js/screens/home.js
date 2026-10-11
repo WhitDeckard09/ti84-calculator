@@ -38,8 +38,38 @@
     if (S.home.rows.length > MAX) S.home.rows.splice(0, S.home.rows.length - MAX);
   }
 
-  function answerText(res) {
-    return res.frac ? Fmt.frac(res.value, S.mode()) : Fmt.num(res.value, S.mode());
+  /* A number goes right-aligned as text. A matrix or list is kept as lines and
+     laid out when drawn, because a wide one scrolls sideways. */
+  function pushValue(shown) {
+    if (typeof shown === 'string') pushRight(shown);
+    else S.home.rows.push({ val: shown.lines, off: 0 });
+  }
+
+  /* One logical row can fill several screen rows. */
+  function window16(line, off) {
+    var chars = Array.from(line), end = off + W;
+    var seg = chars.slice(off, end);
+    while (seg.length < W) seg.push(' ');
+    if (off > 0) seg[0] = '…';
+    if (end < chars.length) seg[W - 1] = '…';
+    return seg.join('');
+  }
+  function valueWidth(lines) {
+    return lines.reduce(function (m, l) { return Math.max(m, Array.from(l).length); }, 0);
+  }
+  function expandRow(r, out) {
+    if (!r.val) { out.push(r); return; }
+    var width = valueWidth(r.val);
+    r.off = Math.max(0, Math.min(r.off || 0, Math.max(0, width - W)));
+    r.val.forEach(function (l) {
+      if (width <= W) out.push({ s: l, col: W - width });
+      else out.push({ s: window16(l, r.off), col: 0 });
+    });
+  }
+  /* the newest answer, when it is a matrix or list wider than the screen */
+  function wideAnswer() {
+    var r = S.home.rows[S.home.rows.length - 1];
+    return r && r.val && valueWidth(r.val) > W ? r : null;
   }
 
   function execute() {
@@ -88,7 +118,7 @@
     entryIdx = -1;
 
     pushLeft(text);
-    pushRight(answerText(res));
+    pushValue(Fmt.show(res.value, S.mode(), res.frac));
     trimRows();
     ed.clear();
     S.home.scroll = 0;
@@ -104,7 +134,8 @@
   }
 
   function progDisp(text, right) {
-    if (right) pushRight(text); else pushLeft(text);
+    if (typeof text !== 'string') pushValue(text);
+    else if (right) pushRight(text); else pushLeft(text);
     trimRows();
     S.home.scroll = 0;
   }
@@ -171,7 +202,8 @@
   /* --- rendering -------------------------------------------------------- */
 
   function layout() {
-    var rows = S.home.rows.slice();
+    var rows = [];
+    S.home.rows.forEach(function (r) { expandRow(r, rows); });
     var entryLines = wrap(ed.text());
     var start = rows.length;
     entryLines.forEach(function (l) { rows.push({ s: l, right: false }); });
@@ -189,7 +221,7 @@
     for (var i = 0; i < H; i++) {
       var r = L.rows[top + i];
       if (!r) continue;
-      var col = r.right ? Math.max(0, W - Array.from(r.s).length) : 0;
+      var col = r.col !== undefined ? r.col : (r.right ? Math.max(0, W - Array.from(r.s).length) : 0);
       LCD.text(col, i, r.s);
     }
 
@@ -256,12 +288,24 @@
         if (ed.isEmpty()) { S.home.rows.length = 0; }
         else ed.clear();
         return;
-      case 'left':  ed.left(); return;
-      case 'right': ed.right(); return;
+      case 'left':
+        if (ed.isEmpty() && wideAnswer()) { var wl = wideAnswer(); wl.off = Math.max(0, (wl.off || 0) - 1); return; }
+        ed.left(); return;
+      case 'right':
+        if (ed.isEmpty() && wideAnswer()) {
+          var wr = wideAnswer();
+          wr.off = Math.min(valueWidth(wr.val) - W, (wr.off || 0) + 1);
+          return;
+        }
+        ed.right(); return;
       case 'up':    S.home.scroll = Math.min(S.home.scroll + 1, Math.max(0, layout().rows.length - H)); return;
       case 'down':  S.home.scroll = Math.max(0, S.home.scroll - 1); return;
       case 'entry': recallEntry(); return;
-      case 'sto':   ed.insert(TI.Tok.store()); return;
+      case 'sto':
+        /* STO▸ on an empty line stores the last answer: the calculator shows Ans→ */
+        if (!ed.toks.length) ed.insert(TI.Tok.ans());
+        ed.insert(TI.Tok.store());
+        return;
     }
   }
 

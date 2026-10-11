@@ -33,6 +33,7 @@
     try {
       var r = TI.Eval.evaluate(TI.Parser.parse(toks), S.evalCtx());
       var v = r.value;
+      if (typeof v !== 'number') { TI.Menu.error('DATA TYPE'); return false; }
       if (f.integer) v = Math.round(v);
       f.set(v);
       this.dirty = false;

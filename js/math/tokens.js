@@ -21,6 +21,13 @@
     post:   function (f, s) { return { t: 'post', s: s, f: f }; },
     konst:  function (f, s) { return { t: 'const', s: s, f: f }; },
     vari:   function (n)  { return { t: 'var', s: n, n: n }; },
+    /* matrix literal brackets, list braces, and the [A]..[J] / L1..L6 names */
+    lb:     function ()  { return { t: 'lb', s: '[' }; },
+    rb:     function ()  { return { t: 'rb', s: ']' }; },
+    lbr:    function ()  { return { t: 'lbr', s: '{' }; },
+    rbr:    function ()  { return { t: 'rbr', s: '}' }; },
+    mat:    function (n)  { return { t: 'mat', s: '[' + n + ']', n: n }; },
+    lst:    function (n)  { return { t: 'lst', s: 'L' + SUB.charAt(n), n: n }; },
     yvar:   function (n)  { return { t: 'yvar', s: 'Y' + SUB.charAt(n), n: n }; },
     ans:    function ()  { return { t: 'ans', s: 'Ans' }; },
     store:  function ()  { return { t: 'store', s: '→' }; },
@@ -48,7 +55,8 @@
   T.startsOperand = function (tok) {
     if (!tok) return false;
     return tok.t === 'd' || tok.t === 'lp' || tok.t === 'fn' || tok.t === 'var' ||
-           tok.t === 'yvar' || tok.t === 'const' || tok.t === 'ans';
+           tok.t === 'yvar' || tok.t === 'const' || tok.t === 'ans' ||
+           tok.t === 'mat' || tok.t === 'lst' || tok.t === 'lb' || tok.t === 'lbr';
   };
 
   /* --- ASCII lexer -----------------------------------------------------
@@ -105,7 +113,28 @@
     ['and', function () { return T.word('and', ' and '); }],
     ['xor', function () { return T.word('xor', ' xor '); }],
     ['or', function () { return T.word('or', ' or '); }],
-    ['not(', function () { return T.fn('not'); }]
+    ['not(', function () { return T.fn('not'); }],
+
+    /* matrix and list functions */
+    ['Matr>list(', function () { return T.fn('matrToList', 'Matr▸list('); }],
+    ['Matr▸list(', function () { return T.fn('matrToList', 'Matr▸list('); }],
+    ['List>matr(', function () { return T.fn('listToMatr', 'List▸matr('); }],
+    ['List▸matr(', function () { return T.fn('listToMatr', 'List▸matr('); }],
+    ['identity(', function () { return T.fn('identity'); }],
+    ['augment(', function () { return T.fn('augment'); }],
+    ['cumSum(', function () { return T.fn('cumSum'); }],
+    ['rowSwap(', function () { return T.fn('rowSwap'); }],
+    ['row+(', function () { return T.fn('rowPlus', 'row+('); }],
+    ['*row+(', function () { return T.fn('mulRowPlus', '*row+('); }],
+    ['*row(', function () { return T.fn('mulRow', '*row('); }],
+    ['randM(', function () { return T.fn('randM'); }],
+    ['rref(', function () { return T.fn('rref'); }],
+    ['ref(', function () { return T.fn('ref'); }],
+    ['Fill(', function () { return T.fn('fill'); }],
+    ['det(', function () { return T.fn('det'); }],
+    ['dim(', function () { return T.fn('dim'); }],
+    ['^T', function () { return T.post('transp', 'ᵀ'); }],
+    ['ᵀ', function () { return T.post('transp', 'ᵀ'); }]
   ];
 
   T.lex = function (src) {
@@ -120,6 +149,17 @@
       if (c >= '0' && c <= '9' || c === '.') { out.push(T.digit(c)); i++; continue; }
       if (c === '~' || c === '⁻') { out.push(T.neg()); i++; continue; }
       if ('+-*/^'.indexOf(c) >= 0) { out.push(T.op(c)); i++; continue; }
+      if (c === '[') {
+        var nm = src.charAt(i + 1);
+        if (nm >= 'A' && nm <= 'J' && src.charAt(i + 2) === ']') { out.push(T.mat(nm)); i += 3; continue; }
+        out.push(T.lb()); i++; continue;
+      }
+      if (c === ']') { out.push(T.rb()); i++; continue; }
+      if (c === '{') { out.push(T.lbr()); i++; continue; }
+      if (c === '}') { out.push(T.rbr()); i++; continue; }
+      if (c === 'L' && src.charAt(i + 1) >= '1' && src.charAt(i + 1) <= '6') {
+        out.push(T.lst(+src.charAt(i + 1))); i += 2; continue;
+      }
       if (c === '(') { out.push(T.lp()); i++; continue; }
       if (c === ')') { out.push(T.rp()); i++; continue; }
       if (c === ',') { out.push(T.comma()); i++; continue; }
